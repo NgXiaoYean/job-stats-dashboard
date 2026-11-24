@@ -65,9 +65,9 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
         const title = Boolean(item.title?.trim());
         const link = Boolean(item.url || item.link);
         const author = Boolean(
-          typeof item.author === 'string'
-            ? item.author.trim()
-            : item.author?.name?.trim()
+          (typeof item.author === 'string' && item.author.trim()) ||
+          item.author?.name?.trim() ||
+          (Array.isArray(item.authors) && item.authors.some((a: any) => a?.name?.trim()))
         );
         const summary = (item.content_html || item.summary || '').toString();
         const desc = Boolean(summary.trim());
