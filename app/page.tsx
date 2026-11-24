@@ -181,7 +181,7 @@ export default function Dashboard() {
           </div>
           <div className="text-2xl font-bold text-slate-900">{avgCompleteness}%</div>
           <p className="text-xs text-slate-400 mt-1">
-            {totalComplete} of {totalPosts} posts have all fields
+            {totalComplete} of {totalPosts} posts have all core fields (Post ID, Date, URL, Title)
           </p>
         </div>
 
@@ -223,7 +223,7 @@ export default function Dashboard() {
               <tr>
                 <th className="px-6 py-3.5">Source Name</th>
                 <th className="px-4 py-3.5">Total Posts</th>
-                <th className="px-4 py-3.5">Complete Fields</th>
+                <th className="px-4 py-3.5" title="Has Post ID, PostedDate + Time, URL (Job), and Title">Complete Fields</th>
                 <th className="px-4 py-3.5">Has Location</th>
                 <th className="px-4 py-3.5">&le; 7 Days</th>
                 <th className="px-4 py-3.5">&le; 30 Days</th>

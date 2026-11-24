@@ -62,6 +62,7 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
       let hasLocation = 0;
 
       for (const item of items) {
+        const postId = Boolean(item.id || item.guid);
         const title = Boolean(item.title?.trim());
         const link = Boolean(item.url || item.link);
         const author = Boolean(
@@ -103,8 +104,8 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
           hasLocation++;
         }
 
-        // All critical fields complete
-        if (title && link && author && desc && hasValidDate && tags.length > 0) {
+        // Complete: Has Post ID, PostedDate + Time, URL (Job), and Title
+        if (postId && hasValidDate && link && title) {
           completeFields++;
         }
       }
