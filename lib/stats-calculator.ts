@@ -39,7 +39,7 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
   const results: JobSourceStat[] = [];
 
   for (const s of sources) {
-    const endpoint = `${cleanRoot}${s.path}.json?limit=100`;
+    const endpoint = `${cleanRoot}${s.path}?format=json&limit=100`;
     try {
       const res = await fetch(endpoint, {
         cache: 'no-store',
