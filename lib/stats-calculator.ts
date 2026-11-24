@@ -1,9 +1,20 @@
+export interface MissingFieldsBreakdown {
+  missingTitle: number;
+  missingDate: number;
+  missingUrl: number;
+  missingPostId: number;
+  missingLocation: number;
+}
+
 export interface JobSourceStat {
   source: string;
   url: string;
   totalPosts: number;
   completeFields: number;
   completeFieldsPercent: number;
+  incompletePosts: number;
+  incompletePostsPercent: number;
+  missing: MissingFieldsBreakdown;
   hasLocation: number;
   hasLocationPercent: number;
   within7d: number;
@@ -61,22 +72,22 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
       let completeFields = 0;
       let hasLocation = 0;
 
+      let missingTitle = 0;
+      let missingDate = 0;
+      let missingUrl = 0;
+      let missingPostId = 0;
+      let missingLocation = 0;
+
       for (const item of items) {
         const postId = Boolean(item.id || item.guid);
         const title = Boolean(item.title?.trim());
         const link = Boolean(item.url || item.link);
-        const author = Boolean(
-          (typeof item.author === 'string' && item.author.trim()) ||
-          item.author?.name?.trim() ||
-          (Array.isArray(item.authors) && item.authors.some((a: any) => a?.name?.trim()))
-        );
-        const summary = (item.content_html || item.summary || '').toString();
-        const desc = Boolean(summary.trim());
         const tags: string[] = Array.isArray(item.tags)
           ? item.tags
           : Array.isArray(item.category)
           ? item.category
           : [];
+        const summary = (item.content_html || item.summary || '').toString();
 
         // Check publication dates
         const dateStr = item.date_published || item.pubDate;
@@ -90,6 +101,12 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
           }
         }
 
+        // Track missing counts for individual fields
+        if (!postId) missingPostId++;
+        if (!title) missingTitle++;
+        if (!link) missingUrl++;
+        if (!hasValidDate) missingDate++;
+
         // Check location presence
         const tagsContainLocation = tags.some((tag) => {
           const lower = String(tag).toLowerCase();
@@ -102,21 +119,34 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
 
         if (tagsContainLocation || summaryContainsLocation) {
           hasLocation++;
+        } else {
+          missingLocation++;
         }
 
-        // Complete: Has Post ID, PostedDate + Time, URL (Job), and Title
+        // Complete: Has all 4 core fields (Post ID, PostedDate + Time, URL, and Title)
         if (postId && hasValidDate && link && title) {
           completeFields++;
         }
       }
 
       const total = items.length;
+      const incompletePosts = Math.max(0, total - completeFields);
+
       results.push({
         source: s.name,
         url: endpoint,
         totalPosts: total,
         completeFields,
         completeFieldsPercent: total ? Math.round((completeFields / total) * 1000) / 10 : 0,
+        incompletePosts,
+        incompletePostsPercent: total ? Math.round((incompletePosts / total) * 1000) / 10 : 0,
+        missing: {
+          missingTitle,
+          missingDate,
+          missingUrl,
+          missingPostId,
+          missingLocation,
+        },
         hasLocation,
         hasLocationPercent: total ? Math.round((hasLocation / total) * 1000) / 10 : 0,
         within7d,
@@ -130,6 +160,15 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
         totalPosts: 0,
         completeFields: 0,
         completeFieldsPercent: 0,
+        incompletePosts: 0,
+        incompletePostsPercent: 0,
+        missing: {
+          missingTitle: 0,
+          missingDate: 0,
+          missingUrl: 0,
+          missingPostId: 0,
+          missingLocation: 0,
+        },
         hasLocation: 0,
         hasLocationPercent: 0,
         within7d: 0,

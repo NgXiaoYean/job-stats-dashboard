@@ -3,16 +3,26 @@
 import React, { useEffect, useState } from 'react';
 import {
   Activity,
+  AlertTriangle,
   CheckCircle2,
   Database,
   ExternalLink,
   MapPin,
   RefreshCw,
   Search,
+  ShieldAlert,
   ShieldCheck,
   TrendingUp,
   XCircle,
 } from 'lucide-react';
+
+interface MissingFieldsBreakdown {
+  missingTitle: number;
+  missingDate: number;
+  missingUrl: number;
+  missingPostId: number;
+  missingLocation: number;
+}
 
 interface JobStat {
   source: string;
@@ -20,6 +30,9 @@ interface JobStat {
   totalPosts: number;
   completeFields: number;
   completeFieldsPercent: number;
+  incompletePosts: number;
+  incompletePostsPercent: number;
+  missing?: MissingFieldsBreakdown;
   hasLocation: number;
   hasLocationPercent: number;
   within7d: number;
@@ -73,10 +86,19 @@ export default function Dashboard() {
   const liveStats = data?.live || [];
   const totalPosts = liveStats.reduce((acc, s) => acc + s.totalPosts, 0);
   const totalComplete = liveStats.reduce((acc, s) => acc + s.completeFields, 0);
+  const totalIncomplete = liveStats.reduce((acc, s) => acc + (s.incompletePosts || 0), 0);
   const totalLocation = liveStats.reduce((acc, s) => acc + s.hasLocation, 0);
   const totalWithin7d = liveStats.reduce((acc, s) => acc + s.within7d, 0);
+
   const avgCompleteness = totalPosts ? ((totalComplete / totalPosts) * 100).toFixed(1) : '0';
   const avgLocation = totalPosts ? ((totalLocation / totalPosts) * 100).toFixed(1) : '0';
+
+  // Total missing breakdown across all sources
+  const totalMissingTitle = liveStats.reduce((acc, s) => acc + (s.missing?.missingTitle || 0), 0);
+  const totalMissingDate = liveStats.reduce((acc, s) => acc + (s.missing?.missingDate || 0), 0);
+  const totalMissingUrl = liveStats.reduce((acc, s) => acc + (s.missing?.missingUrl || 0), 0);
+  const totalMissingPostId = liveStats.reduce((acc, s) => acc + (s.missing?.missingPostId || 0), 0);
+  const totalMissingLocation = liveStats.reduce((acc, s) => acc + (s.missing?.missingLocation || 0), 0);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -92,7 +114,7 @@ export default function Dashboard() {
             </span>
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Real-time post counts, field completeness, date recency, and location metrics from RSSHub.
+            Real-time post counts, field completeness, missing fields detection, date recency, and location metrics.
           </p>
         </div>
 
@@ -128,7 +150,7 @@ export default function Dashboard() {
             type="text"
             value={baseUrl}
             onChange={(e) => setBaseUrl(e.target.value)}
-            placeholder="Change RSSHub Base URL (e.g. http://localhost:1200 or https://...)"
+            placeholder="Change RSSHub Base URL (e.g. https://crawling.qtimeweb.com/article/news)"
             className="w-full text-sm px-3 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
@@ -176,12 +198,29 @@ export default function Dashboard() {
 
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-medium uppercase tracking-wider">Complete Fields Rate</span>
+            <span className="text-xs font-medium uppercase tracking-wider">Complete Posts</span>
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
           </div>
           <div className="text-2xl font-bold text-slate-900">{avgCompleteness}%</div>
           <p className="text-xs text-slate-400 mt-1">
-            {totalComplete} of {totalPosts} posts have all core fields (Post ID, Date, URL, Title)
+            {totalComplete} of {totalPosts} posts have all 4 core fields
+          </p>
+        </div>
+
+        <div className={`bg-white p-5 rounded-xl border shadow-sm ${totalIncomplete > 0 ? 'border-amber-300 bg-amber-50/20' : 'border-slate-200'}`}>
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-medium uppercase tracking-wider">Missing Critical Fields</span>
+            {totalIncomplete > 0 ? (
+              <ShieldAlert className="w-4 h-4 text-amber-500" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            )}
+          </div>
+          <div className="text-2xl font-bold text-slate-900">
+            {totalIncomplete === 0 ? '0 (100% Clean)' : `${totalIncomplete} Incomplete`}
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
+            Missing: {totalMissingTitle} Title • {totalMissingDate} Date • {totalMissingUrl} URL • {totalMissingPostId} ID
           </p>
         </div>
 
@@ -192,18 +231,7 @@ export default function Dashboard() {
           </div>
           <div className="text-2xl font-bold text-slate-900">{avgLocation}%</div>
           <p className="text-xs text-slate-400 mt-1">
-            {totalLocation} of {totalPosts} posts have location info
-          </p>
-        </div>
-
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-medium uppercase tracking-wider">Recent Posts (&le; 7 Days)</span>
-            <TrendingUp className="w-4 h-4 text-amber-500" />
-          </div>
-          <div className="text-2xl font-bold text-slate-900">{totalWithin7d}</div>
-          <p className="text-xs text-slate-400 mt-1">
-            Published within the past week
+            {totalLocation} with location ({totalMissingLocation} missing location)
           </p>
         </div>
       </div>
@@ -211,7 +239,10 @@ export default function Dashboard() {
       {/* Main Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-8">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="font-semibold text-slate-900 text-sm">Detailed Source Breakdown</h2>
+          <div>
+            <h2 className="font-semibold text-slate-900 text-sm">Detailed Source Breakdown & Missing Field Diagnostics</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Core fields checked: Platform, Post ID, PostedDate + Time, URL (Job), Title</p>
+          </div>
           <span className="text-xs text-slate-400">
             Last updated: {data?.fetchedAt ? new Date(data.fetchedAt).toLocaleTimeString() : 'Loading...'}
           </span>
@@ -223,7 +254,8 @@ export default function Dashboard() {
               <tr>
                 <th className="px-6 py-3.5">Source Name</th>
                 <th className="px-4 py-3.5">Total Posts</th>
-                <th className="px-4 py-3.5" title="Has Post ID, PostedDate + Time, URL (Job), and Title">Complete Fields</th>
+                <th className="px-4 py-3.5" title="Has Post ID, PostedDate + Time, URL (Job), and Title">Complete Posts</th>
+                <th className="px-4 py-3.5" title="Breakdown of missing fields">Missing Fields</th>
                 <th className="px-4 py-3.5">Has Location</th>
                 <th className="px-4 py-3.5">&le; 7 Days</th>
                 <th className="px-4 py-3.5">&le; 30 Days</th>
@@ -260,6 +292,50 @@ export default function Dashboard() {
                       </span>
                     </div>
                   </td>
+
+                  {/* Missing Fields Breakdown */}
+                  <td className="px-4 py-4">
+                    {item.incompletePosts === 0 && (item.missing?.missingLocation || 0) === 0 ? (
+                      <span className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-medium">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        0 Missing
+                      </span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1 text-[11px]">
+                        {item.missing?.missingTitle ? (
+                          <span className="bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded border border-rose-200">
+                            Title: {item.missing.missingTitle}
+                          </span>
+                        ) : null}
+                        {item.missing?.missingDate ? (
+                          <span className="bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded border border-rose-200">
+                            Date: {item.missing.missingDate}
+                          </span>
+                        ) : null}
+                        {item.missing?.missingUrl ? (
+                          <span className="bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded border border-rose-200">
+                            URL: {item.missing.missingUrl}
+                          </span>
+                        ) : null}
+                        {item.missing?.missingPostId ? (
+                          <span className="bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded border border-rose-200">
+                            ID: {item.missing.missingPostId}
+                          </span>
+                        ) : null}
+                        {item.missing?.missingLocation ? (
+                          <span className="bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded border border-amber-200" title="Location not found in category tags or summary">
+                            No Loc: {item.missing.missingLocation}
+                          </span>
+                        ) : null}
+                        {item.incompletePosts === 0 && (
+                          <span className="text-slate-400 py-0.5">
+                            Core Clean ✅
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </td>
+
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-slate-800">
@@ -293,7 +369,7 @@ export default function Dashboard() {
               ))}
               {liveStats.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-slate-400">
+                  <td colSpan={8} className="text-center py-8 text-slate-400">
                     No data available. Check your RSSHub URL or click Refresh.
                   </td>
                 </tr>
