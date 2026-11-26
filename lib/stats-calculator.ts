@@ -48,6 +48,7 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
     { name: 'LokalGig', path: '/lokalgig/gigs' },
     { name: 'Foundit', path: '/foundit/blue-collar' },
     { name: 'Jooble', path: '/jooble/jobs' },
+    { name: 'JobHunter', path: '/jobhuntermy/jobs' },
   ];
 
   const now = new Date();
