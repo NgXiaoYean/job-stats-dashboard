@@ -79,25 +79,27 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
       let missingLocation = 0;
 
       for (const item of items) {
-        const postId = Boolean(item.id || item.guid);
-        const title = Boolean(item.title?.trim());
-        const link = Boolean(item.url || item.link);
-        const tags: string[] = Array.isArray(item.tags)
-          ? item.tags
-          : Array.isArray(item.category)
-          ? item.category
-          : [];
-        const summary = (item.content_html || item.summary || '').toString();
+        // 1. Post ID check
+        const rawId = item.id || item.guid;
+        const postId = typeof rawId === 'string' && rawId.trim().length > 0;
 
-        // Check publication dates
+        // 2. Title check
+        const rawTitle = item.title;
+        const title = typeof rawTitle === 'string' && rawTitle.trim().length > 0;
+
+        // 3. URL (Job) check
+        const rawUrl = item.url || item.link;
+        const link = typeof rawUrl === 'string' && (rawUrl.trim().startsWith('http://') || rawUrl.trim().startsWith('https://'));
+
+        // 4. PostedDate + Time check
         const dateStr = item.date_published || item.pubDate;
         let hasValidDate = false;
+        let pubDateObj: Date | null = null;
         if (dateStr) {
-          const pubDate = new Date(dateStr);
-          if (!Number.isNaN(pubDate.getTime())) {
+          const parsed = new Date(dateStr);
+          if (!Number.isNaN(parsed.getTime())) {
             hasValidDate = true;
-            if (pubDate >= day7Ago) within7d++;
-            if (pubDate >= day30Ago) within30d++;
+            pubDateObj = parsed;
           }
         }
 
@@ -107,7 +109,14 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
         if (!link) missingUrl++;
         if (!hasValidDate) missingDate++;
 
-        // Check location presence
+        // Location check
+        const tags: string[] = Array.isArray(item.tags)
+          ? item.tags
+          : Array.isArray(item.category)
+          ? item.category
+          : [];
+        const summary = (item.content_html || item.summary || '').toString();
+
         const tagsContainLocation = tags.some((tag) => {
           const lower = String(tag).toLowerCase();
           return MALAYSIAN_LOCATIONS.some((loc) => lower.includes(loc));
@@ -123,9 +132,13 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
           missingLocation++;
         }
 
-        // Complete: Has all 4 core fields (Post ID, PostedDate + Time, URL, and Title)
-        if (postId && hasValidDate && link && title) {
+        // Complete: Has all compulsory fields (Post ID, PostedDate + Time, URL, and Title)
+        const isComplete = postId && hasValidDate && link && title;
+        if (isComplete && pubDateObj) {
           completeFields++;
+          // ONLY count past 7 days and 30 days if the post has ALL compulsory fields:
+          if (pubDateObj >= day7Ago) within7d++;
+          if (pubDateObj >= day30Ago) within30d++;
         }
       }
 

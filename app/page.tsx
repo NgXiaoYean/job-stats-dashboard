@@ -89,6 +89,7 @@ export default function Dashboard() {
   const totalIncomplete = liveStats.reduce((acc, s) => acc + (s.incompletePosts || 0), 0);
   const totalLocation = liveStats.reduce((acc, s) => acc + s.hasLocation, 0);
   const totalWithin7d = liveStats.reduce((acc, s) => acc + s.within7d, 0);
+  const totalWithin30d = liveStats.reduce((acc, s) => acc + s.within30d, 0);
 
   const avgCompleteness = totalPosts ? ((totalComplete / totalPosts) * 100).toFixed(1) : '0';
   const avgLocation = totalPosts ? ((totalLocation / totalPosts) * 100).toFixed(1) : '0';
@@ -186,30 +187,30 @@ export default function Dashboard() {
       </div>
 
       {/* Summary KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-medium uppercase tracking-wider">Total Posts Found</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider">Total Posts</span>
             <Activity className="w-4 h-4 text-blue-500" />
           </div>
           <div className="text-2xl font-bold text-slate-900">{totalPosts}</div>
-          <p className="text-xs text-slate-400 mt-1">Across all 4 active job sources</p>
+          <p className="text-[11px] text-slate-400 mt-1">Across all active sources</p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-medium uppercase tracking-wider">Complete Posts</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider">Complete Posts</span>
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
           </div>
           <div className="text-2xl font-bold text-slate-900">{avgCompleteness}%</div>
-          <p className="text-xs text-slate-400 mt-1">
-            {totalComplete} of {totalPosts} posts have all 4 core fields
+          <p className="text-[11px] text-slate-400 mt-1">
+            {totalComplete} of {totalPosts} all core fields
           </p>
         </div>
 
-        <div className={`bg-white p-5 rounded-xl border shadow-sm ${totalIncomplete > 0 ? 'border-amber-300 bg-amber-50/20' : 'border-slate-200'}`}>
+        <div className={`bg-white p-4 rounded-xl border shadow-sm ${totalIncomplete > 0 ? 'border-amber-300 bg-amber-50/20' : 'border-slate-200'}`}>
           <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-medium uppercase tracking-wider">Missing Critical Fields</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider">Missing Fields</span>
             {totalIncomplete > 0 ? (
               <ShieldAlert className="w-4 h-4 text-amber-500" />
             ) : (
@@ -217,21 +218,32 @@ export default function Dashboard() {
             )}
           </div>
           <div className="text-2xl font-bold text-slate-900">
-            {totalIncomplete === 0 ? '0 (100% Clean)' : `${totalIncomplete} Incomplete`}
+            {totalIncomplete === 0 ? '0' : `${totalIncomplete}`}
           </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Missing: {totalMissingTitle} Title • {totalMissingDate} Date • {totalMissingUrl} URL • {totalMissingPostId} ID
+          <p className="text-[11px] text-slate-500 mt-1">
+            {totalIncomplete === 0 ? 'All 100% clean' : `${totalMissingTitle}T • ${totalMissingDate}D • ${totalMissingUrl}U • ${totalMissingPostId}ID`}
           </p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-medium uppercase tracking-wider">Location Detection</span>
-            <MapPin className="w-4 h-4 text-indigo-500" />
+            <span className="text-[11px] font-medium uppercase tracking-wider">&le; 7 Days (Complete)</span>
+            <TrendingUp className="w-4 h-4 text-emerald-600" />
           </div>
-          <div className="text-2xl font-bold text-slate-900">{avgLocation}%</div>
-          <p className="text-xs text-slate-400 mt-1">
-            {totalLocation} with location ({totalMissingLocation} missing location)
+          <div className="text-2xl font-bold text-slate-900">{totalWithin7d}</div>
+          <p className="text-[11px] text-slate-400 mt-1">
+            Past 7 days with all fields
+          </p>
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-[11px] font-medium uppercase tracking-wider">&le; 30 Days (Complete)</span>
+            <TrendingUp className="w-4 h-4 text-blue-600" />
+          </div>
+          <div className="text-2xl font-bold text-slate-900">{totalWithin30d}</div>
+          <p className="text-[11px] text-slate-400 mt-1">
+            Past 30 days with all fields
           </p>
         </div>
       </div>
@@ -257,8 +269,8 @@ export default function Dashboard() {
                 <th className="px-4 py-3.5" title="Has Post ID, PostedDate + Time, URL (Job), and Title">Complete Posts</th>
                 <th className="px-4 py-3.5" title="Breakdown of missing fields">Missing Fields</th>
                 <th className="px-4 py-3.5">Has Location</th>
-                <th className="px-4 py-3.5">&le; 7 Days</th>
-                <th className="px-4 py-3.5">&le; 30 Days</th>
+                <th className="px-4 py-3.5" title="Only posts that have all compulsory fields and were published within the past 7 days">&le; 7 Days (Complete)</th>
+                <th className="px-4 py-3.5" title="Only posts that have all compulsory fields and were published within the past 30 days">&le; 30 Days (Complete)</th>
                 <th className="px-4 py-3.5">Status</th>
               </tr>
             </thead>
