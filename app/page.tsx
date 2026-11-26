@@ -9,7 +9,6 @@ import {
   ExternalLink,
   MapPin,
   RefreshCw,
-  Search,
   ShieldAlert,
   ShieldCheck,
   TrendingUp,
@@ -52,20 +51,14 @@ interface ApiResponse {
 export default function Dashboard() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [baseUrl, setBaseUrl] = useState('');
-  const [activeUrl, setActiveUrl] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(false);
 
-  const fetchStats = async (customUrl?: string) => {
+  const fetchStats = async () => {
     setLoading(true);
     try {
-      const query = customUrl ? `?baseUrl=${encodeURIComponent(customUrl)}` : '';
-      const res = await fetch(`/api/stats${query}`);
+      const res = await fetch('/api/stats');
       const json: ApiResponse = await res.json();
       setData(json);
-      if (!activeUrl && customUrl) {
-        setActiveUrl(customUrl);
-      }
     } catch (err) {
       console.error('Failed to load stats:', err);
     } finally {
@@ -79,9 +72,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!autoRefresh) return;
-    const interval = setInterval(() => fetchStats(activeUrl), 60000);
+    const interval = setInterval(() => fetchStats(), 60000);
     return () => clearInterval(interval);
-  }, [autoRefresh, activeUrl]);
+  }, [autoRefresh]);
 
   const liveStats = data?.live || [];
   const totalPosts = liveStats.reduce((acc, s) => acc + s.totalPosts, 0);
@@ -143,26 +136,13 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Control Bar: Custom RSSHub URL & Refresh */}
+      {/* Control Bar: Feed Source & Refresh */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-8 flex flex-col sm:flex-row gap-3 items-center justify-between">
-        <div className="flex items-center gap-2 w-full sm:w-auto flex-1">
-          <Search className="w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            value={baseUrl}
-            onChange={(e) => setBaseUrl(e.target.value)}
-            placeholder="Change RSSHub Base URL (e.g. https://crawling.qtimeweb.com/article/news)"
-            className="w-full text-sm px-3 py-1.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button
-            onClick={() => {
-              setActiveUrl(baseUrl);
-              fetchStats(baseUrl);
-            }}
-            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg shrink-0 transition"
-          >
-            Apply URL
-          </button>
+        <div className="flex items-center gap-2 text-xs text-slate-600">
+          <span className="font-semibold text-slate-700">Source:</span>
+          <span className="font-mono bg-slate-100 text-slate-800 px-2.5 py-1 rounded-md border border-slate-200 font-medium">
+            https://crawling.qtimeweb.com/article/news
+          </span>
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
@@ -176,7 +156,7 @@ export default function Dashboard() {
             Auto-refresh (1m)
           </label>
           <button
-            onClick={() => fetchStats(activeUrl)}
+            onClick={() => fetchStats()}
             disabled={loading}
             className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-medium rounded-lg transition"
           >
@@ -285,7 +265,7 @@ export default function Dashboard() {
                         target="_blank"
                         rel="noreferrer"
                         className="text-slate-400 hover:text-blue-600 transition"
-                        title="Open RSSHub JSON feed"
+                        title="Open RSS feed"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                       </a>

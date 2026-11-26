@@ -33,14 +33,21 @@ const MALAYSIAN_LOCATIONS = [
 ];
 
 export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceStat[]> {
-  const root = baseUrl || process.env.RSSHUB_BASE_URL || 'http://localhost:1200';
+  const root = baseUrl || process.env.RSSHUB_BASE_URL || 'https://crawling.qtimeweb.com/article/news';
   const cleanRoot = root.replace(/\/$/, '');
 
   const sources = [
     { name: 'Maukerja', path: '/maukerja/jobs' },
+    { name: 'Ricebowl', path: '/ricebowl/jobs' },
     { name: 'GoGet', path: '/goget/jobs' },
     { name: 'FastJobs', path: '/fastjobs/jobs' },
     { name: 'Troopers', path: '/troopers/jobs' },
+    { name: 'JobStore', path: '/jobstore/jobs' },
+    { name: 'Graduan', path: '/graduan/jobs' },
+    { name: 'Hiredly', path: '/hiredly' },
+    { name: 'LokalGig', path: '/lokalgig/gigs' },
+    { name: 'Foundit', path: '/foundit/blue-collar' },
+    { name: 'Jooble', path: '/jooble/jobs' },
   ];
 
   const now = new Date();
@@ -50,7 +57,8 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
   const results: JobSourceStat[] = [];
 
   for (const s of sources) {
-    const endpoint = `${cleanRoot}${s.path}?format=json&limit=100`;
+    const feedUrl = `${cleanRoot}${s.path}`;
+    const endpoint = `${feedUrl}?format=json&limit=100`;
     try {
       const res = await fetch(endpoint, {
         cache: 'no-store',
@@ -147,7 +155,7 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
 
       results.push({
         source: s.name,
-        url: endpoint,
+        url: feedUrl,
         totalPosts: total,
         completeFields,
         completeFieldsPercent: total ? Math.round((completeFields / total) * 1000) / 10 : 0,
@@ -169,7 +177,7 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
     } catch (err: any) {
       results.push({
         source: s.name,
-        url: endpoint,
+        url: feedUrl,
         totalPosts: 0,
         completeFields: 0,
         completeFieldsPercent: 0,
