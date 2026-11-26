@@ -25,20 +25,10 @@ export async function GET(request: Request) {
         // Verify connection with ping
         await client.db('admin').command({ ping: 1 });
         mongoConnected = true;
-        mongoMessage = 'Connected to MongoDB Atlas (Recording Snapshots)';
+        mongoMessage = 'Connected to MongoDB Atlas (Daily Snapshots at 3:00 PM)';
         const db = client.db('job_analytics');
 
-        // Save this snapshot if posts exist
-        if (stats.some((s) => s.totalPosts > 0)) {
-          await db.collection('daily_stats').insertMany(
-            stats.map((s) => ({
-              ...s,
-              recordedAtDate: new Date(s.recordedAt),
-            }))
-          );
-        }
-
-        // Fetch the last 20 snapshots
+        // Fetch the last 20 snapshots recorded by 3:00 PM cron
         history = await db
           .collection('daily_stats')
           .find({})
