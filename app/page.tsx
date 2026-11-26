@@ -382,17 +382,32 @@ export default function Dashboard() {
       {/* History Snapshots: Database Data */}
       {data?.history && data.history.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-8">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800">
-              <Database className="w-3 h-3" />
-              DATABASE HISTORY
-            </span>
-            <h3 className="text-sm font-semibold text-slate-900">
-              Daily Snapshots in MongoDB ({data.history.length} records)
-            </h3>
-          </div>
-          <div className="text-xs text-slate-500 mb-4">
-            Stored permanently in MongoDB Atlas once every day at 3:00 PM by the automated cron job.
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800">
+                  <Database className="w-3 h-3" />
+                  DATABASE HISTORY
+                </span>
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Daily Snapshots in MongoDB ({data.history.length} records)
+                </h3>
+              </div>
+              <div className="text-xs text-slate-500">
+                Stored permanently in MongoDB Atlas once every day at 3:00 PM by the automated cron job.
+              </div>
+            </div>
+            <button
+              onClick={async () => {
+                if (window.confirm('Delete all old snapshot records so history starts fresh from 3:00 PM cron?')) {
+                  await fetch('/api/clear-history?confirm=true');
+                  fetchStats();
+                }
+              }}
+              className="px-3 py-1.5 text-xs text-rose-600 hover:text-white hover:bg-rose-600 border border-rose-200 hover:border-transparent rounded-lg font-medium transition self-start sm:self-auto shrink-0"
+            >
+              Reset History
+            </button>
           </div>
           <div className="overflow-x-auto max-h-64">
             <table className="w-full text-left text-xs">
