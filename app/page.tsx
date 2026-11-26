@@ -228,15 +228,23 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Main Table */}
+      {/* Main Table: Live Crawling Data */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-8">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h2 className="font-semibold text-slate-900 text-sm">Detailed Source Breakdown & Missing Field Diagnostics</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Core fields checked: Platform, Post ID, PostedDate + Time, URL (Job), Title</p>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                LIVE CRAWL
+              </span>
+              <h2 className="font-semibold text-slate-900 text-sm">Detailed Source Breakdown & Missing Field Diagnostics</h2>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Live real-time feed inspection directly from the crawling server (not database). Core fields checked: Platform, Post ID, PostedDate + Time, URL (Job), Title.
+            </p>
           </div>
-          <span className="text-xs text-slate-400">
-            Last updated: {data?.fetchedAt ? new Date(data.fetchedAt).toLocaleTimeString() : 'Loading...'}
+          <span className="text-xs text-slate-500 font-medium bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 shrink-0 self-start sm:self-auto">
+            Last checked: {data?.fetchedAt ? new Date(data.fetchedAt).toLocaleTimeString() : 'Loading...'}
           </span>
         </div>
 
@@ -371,14 +379,20 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* History Snapshots (when MongoDB is active) */}
+      {/* History Snapshots: Database Data */}
       {data?.history && data.history.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-8">
-          <h3 className="text-sm font-semibold text-slate-900 mb-3">
-            Recent Snapshots in MongoDB ({data.history.length} records)
-          </h3>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800">
+              <Database className="w-3 h-3" />
+              DATABASE HISTORY
+            </span>
+            <h3 className="text-sm font-semibold text-slate-900">
+              Daily Snapshots in MongoDB ({data.history.length} records)
+            </h3>
+          </div>
           <div className="text-xs text-slate-500 mb-4">
-            Daily cron snapshots recorded automatically in MongoDB Atlas.
+            Stored permanently in MongoDB Atlas once every day at 3:00 PM by the automated cron job.
           </div>
           <div className="overflow-x-auto max-h-64">
             <table className="w-full text-left text-xs">
