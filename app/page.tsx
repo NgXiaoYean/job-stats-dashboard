@@ -4,16 +4,26 @@ import React, { useEffect, useState } from 'react';
 import {
   Activity,
   AlertTriangle,
+  Check,
   CheckCircle2,
+  ChevronDown,
+  Copy,
   Database,
   ExternalLink,
+  Layers,
   MapPin,
   RefreshCw,
   ShieldAlert,
   ShieldCheck,
   TrendingUp,
+  X,
   XCircle,
 } from 'lucide-react';
+
+export interface SourceSubLink {
+  label: string;
+  url: string;
+}
 
 interface MissingFieldsBreakdown {
   missingTitle: number;
@@ -26,6 +36,7 @@ interface MissingFieldsBreakdown {
 interface JobStat {
   source: string;
   url: string;
+  subLinks?: SourceSubLink[];
   totalPosts: number;
   completeFields: number;
   completeFieldsPercent: number;
@@ -52,6 +63,25 @@ export default function Dashboard() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(false);
+
+  const [selectedMultiLink, setSelectedMultiLink] = useState<{
+    source: string;
+    subLinks: SourceSubLink[];
+  } | null>(null);
+  const [activeTabIdx, setActiveTabIdx] = useState(0);
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+
+  const handleCopyUrl = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedUrl(url);
+      setTimeout(() => {
+        setCopiedUrl(null);
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy', err);
+    }
+  };
 
   const fetchStats = async () => {
     setLoading(true);
@@ -268,15 +298,32 @@ export default function Dashboard() {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-slate-900">{item.source}</span>
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-slate-400 hover:text-blue-600 transition"
-                        title="Open RSS feed"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
+                      {item.subLinks && item.subLinks.length > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedMultiLink({ source: item.source, subLinks: item.subLinks! });
+                            setActiveTabIdx(0);
+                            setCopiedUrl(null);
+                          }}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition shadow-sm cursor-pointer"
+                          title={`View ${item.subLinks.length} category feeds`}
+                        >
+                          <ExternalLink className="w-3 h-3 text-blue-600" />
+                          <span>{item.subLinks.length} Feeds</span>
+                          <ChevronDown className="w-3 h-3 text-blue-500" />
+                        </button>
+                      ) : (
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-slate-400 hover:text-blue-600 transition"
+                          title="Open RSS feed"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-4 font-medium text-slate-700">
@@ -453,6 +500,170 @@ export default function Dashboard() {
           To remove anytime: simply delete the folder and remove the project from Vercel.
         </p>
       </footer>
+
+      {/* Category Feeds Modal / Tabs */}
+      {selectedMultiLink && (
+        <div
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity"
+          onClick={() => setSelectedMultiLink(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-xl w-full p-6 relative overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100 shrink-0">
+                  <Layers className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">
+                    {selectedMultiLink.source} Feed Categories
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {selectedMultiLink.subLinks.length} category feeds available. Select a tab to view or open.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedMultiLink(null)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Horizontal Tabs */}
+            <div className="mt-5">
+              <div className="flex items-center gap-1.5 p-1.5 bg-slate-100/80 rounded-xl overflow-x-auto border border-slate-200/60">
+                {selectedMultiLink.subLinks.map((sub, idx) => {
+                  const isActive = activeTabIdx === idx;
+                  return (
+                    <button
+                      key={sub.url}
+                      type="button"
+                      onClick={() => setActiveTabIdx(idx)}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all shrink-0 cursor-pointer ${
+                        isActive
+                          ? 'bg-white text-blue-700 shadow-sm border border-slate-200/80'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                      }`}
+                    >
+                      {sub.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Active Tab Panel */}
+            {selectedMultiLink.subLinks[activeTabIdx] && (
+              <div className="mt-4 p-4 rounded-xl bg-slate-50 border border-slate-200/80">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-200">
+                    {selectedMultiLink.subLinks[activeTabIdx].label} Feed
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    Category {activeTabIdx + 1} of {selectedMultiLink.subLinks.length}
+                  </span>
+                </div>
+                <div className="text-xs font-mono bg-white p-2.5 rounded-lg border border-slate-200 text-slate-700 break-all select-all">
+                  {selectedMultiLink.subLinks[activeTabIdx].url}
+                </div>
+                <div className="flex items-center justify-end gap-2 mt-3">
+                  <button
+                    type="button"
+                    onClick={() => handleCopyUrl(selectedMultiLink.subLinks[activeTabIdx].url)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 transition cursor-pointer"
+                  >
+                    {copiedUrl === selectedMultiLink.subLinks[activeTabIdx].url ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <span className="text-emerald-700 font-semibold">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Copy URL</span>
+                      </>
+                    )}
+                  </button>
+                  <a
+                    href={selectedMultiLink.subLinks[activeTabIdx].url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition"
+                  >
+                    <span>Open Feed</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* All Feeds Quick Access List */}
+            <div className="mt-5">
+              <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                All Available Categories
+              </div>
+              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                {selectedMultiLink.subLinks.map((sub) => (
+                  <div
+                    key={sub.url}
+                    className="flex items-center justify-between p-2 rounded-lg bg-slate-50/60 hover:bg-slate-100/80 border border-slate-100 transition"
+                  >
+                    <div className="min-w-0 pr-3">
+                      <div className="text-xs font-semibold text-slate-800">
+                        {sub.label}
+                      </div>
+                      <div className="text-[11px] font-mono text-slate-400 truncate">
+                        {sub.url}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleCopyUrl(sub.url)}
+                        className="p-1.5 rounded-md hover:bg-white text-slate-500 hover:text-slate-700 border border-transparent hover:border-slate-200 transition cursor-pointer"
+                        title="Copy URL"
+                      >
+                        {copiedUrl === sub.url ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                      <a
+                        href={sub.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md bg-white text-blue-600 hover:bg-blue-50 border border-slate-200 transition"
+                      >
+                        <span>Open</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="mt-5 pt-3 border-t border-slate-100 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedMultiLink(null)}
+                className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

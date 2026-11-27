@@ -6,9 +6,15 @@ export interface MissingFieldsBreakdown {
   missingLocation: number;
 }
 
+export interface SourceSubLink {
+  label: string;
+  url: string;
+}
+
 export interface JobSourceStat {
   source: string;
   url: string;
+  subLinks?: SourceSubLink[];
   totalPosts: number;
   completeFields: number;
   completeFieldsPercent: number;
@@ -36,10 +42,26 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
   const root = baseUrl || process.env.RSSHUB_BASE_URL || 'https://crawling.qtimeweb.com/article/news';
   const cleanRoot = root.replace(/\/$/, '');
 
-  const sources = [
+  interface SourceConfig {
+    name: string;
+    path: string;
+    subLinks?: { label: string; path: string }[];
+  }
+
+  const sources: SourceConfig[] = [
     { name: 'Maukerja', path: '/maukerja/jobs' },
     { name: 'Ricebowl', path: '/ricebowl/jobs' },
-    { name: 'GoGet', path: '/goget/jobs' },
+    {
+      name: 'GoGet',
+      path: '/goget/jobs',
+      subLinks: [
+        { label: 'All Jobs', path: '/goget/jobs' },
+        { label: 'Full Time', path: '/goget/jobs/full_time' },
+        { label: 'Part Time', path: '/goget/jobs/part_time' },
+        { label: 'Hourly Gig', path: '/goget/jobs/hourly_gig' },
+        { label: 'Contract', path: '/goget/jobs/contract' },
+      ],
+    },
     { name: 'FastJobs', path: '/fastjobs/jobs' },
     { name: 'Troopers', path: '/troopers/jobs' },
     { name: 'JobStore', path: '/jobstore/jobs' },
@@ -48,11 +70,17 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
     { name: 'LokalGig', path: '/lokalgig/gigs' },
     { name: 'Foundit', path: '/foundit/blue-collar' },
     { name: 'Jooble', path: '/jooble/jobs' },
-    { name: 'JobHunter', path: '/jobhuntermy/jobs' },
-    { name: 'JobHunter (Part-Time)', path: '/jobhuntermy/jobs/part_time' },
-    { name: 'JobHunter (Event Crew)', path: '/jobhuntermy/jobs/event_crew' },
-    { name: 'JobHunter (Talent)', path: '/jobhuntermy/jobs/talent' },
-    { name: 'JobHunter (Specialist)', path: '/jobhuntermy/jobs/specialist' },
+    {
+      name: 'JobHunter',
+      path: '/jobhuntermy/jobs',
+      subLinks: [
+        { label: 'All Jobs', path: '/jobhuntermy/jobs' },
+        { label: 'Part-Time', path: '/jobhuntermy/jobs/part_time' },
+        { label: 'Event Crew', path: '/jobhuntermy/jobs/event_crew' },
+        { label: 'Talent', path: '/jobhuntermy/jobs/talent' },
+        { label: 'Specialist', path: '/jobhuntermy/jobs/specialist' },
+      ],
+    },
   ];
 
   const now = new Date();
@@ -161,6 +189,10 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
       results.push({
         source: s.name,
         url: feedUrl,
+        subLinks: s.subLinks?.map((sub) => ({
+          label: sub.label,
+          url: `${cleanRoot}${sub.path}`,
+        })),
         totalPosts: total,
         completeFields,
         completeFieldsPercent: total ? Math.round((completeFields / total) * 1000) / 10 : 0,
@@ -183,6 +215,10 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
       results.push({
         source: s.name,
         url: feedUrl,
+        subLinks: s.subLinks?.map((sub) => ({
+          label: sub.label,
+          url: `${cleanRoot}${sub.path}`,
+        })),
         totalPosts: 0,
         completeFields: 0,
         completeFieldsPercent: 0,
