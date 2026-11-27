@@ -16,6 +16,9 @@ export interface JobSourceStat {
   url: string;
   subLinks?: SourceSubLink[];
   totalPosts: number;
+  newPosts?: number;
+  updatedPosts?: number;
+  postIds?: string[];
   completeFields: number;
   completeFieldsPercent: number;
   incompletePosts: number;
@@ -119,7 +122,15 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
       let missingPostId = 0;
       let missingLocation = 0;
 
+      const postIds: string[] = [];
+
       for (const item of items) {
+        // Collect identifier for post
+        const identifier = item.id || item.guid || item.url || item.link;
+        if (identifier) {
+          postIds.push(String(identifier).trim());
+        }
+
         // 1. Post ID check
         const rawId = item.id || item.guid;
         const postId = typeof rawId === 'string' && rawId.trim().length > 0;
@@ -209,6 +220,7 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
         hasLocationPercent: total ? Math.round((hasLocation / total) * 1000) / 10 : 0,
         within7d,
         within30d,
+        postIds,
         recordedAt: now.toISOString(),
       });
     } catch (err: any) {

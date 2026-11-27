@@ -28,23 +28,51 @@ export async function GET(request: Request) {
       const day = String(now.getDate()).padStart(2, '0');
       const dateString = `${year}-${month}-${day}`;
 
-      const operations = stats.map((s) => ({
-        updateOne: {
-          filter: { source: s.source, dateString },
-          update: {
-            $set: {
-              ...s,
-              dateString,
-              updatedAt: now,
-              recordedAtDate: now,
+      // Find previous day's snapshot for each source to diff new vs existed posts
+      const previousSnapshots = await collection
+        .find({ dateString: { $ne: dateString } })
+        .sort({ recordedAtDate: -1 })
+        .toArray();
+
+      const prevMap = new Map<string, Set<string>>();
+      for (const p of previousSnapshots) {
+        if (!prevMap.has(p.source) && Array.isArray(p.postIds)) {
+          prevMap.set(p.source, new Set(p.postIds));
+        }
+      }
+
+      const operations = stats.map((s) => {
+        const currentIds: string[] = s.postIds || [];
+        const prevSet = prevMap.get(s.source);
+
+        let newPosts = currentIds.length;
+        let updatedPosts = 0;
+
+        if (prevSet && prevSet.size > 0) {
+          newPosts = currentIds.filter((id) => !prevSet.has(id)).length;
+          updatedPosts = currentIds.filter((id) => prevSet.has(id)).length;
+        }
+
+        return {
+          updateOne: {
+            filter: { source: s.source, dateString },
+            update: {
+              $set: {
+                ...s,
+                dateString,
+                newPosts,
+                updatedPosts,
+                updatedAt: now,
+                recordedAtDate: now,
+              },
+              $setOnInsert: {
+                createdAt: now,
+              },
             },
-            $setOnInsert: {
-              createdAt: now,
-            },
+            upsert: true,
           },
-          upsert: true,
-        },
-      }));
+        };
+      });
 
       await collection.bulkWrite(operations);
 

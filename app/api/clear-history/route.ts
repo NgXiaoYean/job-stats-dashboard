@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
+import { fetchAndComputeStats } from '@/lib/stats-calculator';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,12 +24,42 @@ export async function GET(request: Request) {
     }
 
     const db = client.db('job_analytics');
-    const result = await db.collection('daily_stats').deleteMany({});
+    const collection = db.collection('daily_stats');
+    const result = await collection.deleteMany({});
+
+    // Record today's clean 12 platforms as the initial baseline
+    const stats = await fetchAndComputeStats();
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
+
+    const operations = stats.map((s) => ({
+      updateOne: {
+        filter: { source: s.source, dateString },
+        update: {
+          $set: {
+            ...s,
+            dateString,
+            newPosts: s.totalPosts,
+            updatedPosts: 0,
+            updatedAt: now,
+            recordedAtDate: now,
+          },
+          $setOnInsert: {
+            createdAt: now,
+          },
+        },
+        upsert: true,
+      },
+    }));
+
+    await collection.bulkWrite(operations);
 
     return NextResponse.json({
       success: true,
-      message: `Successfully deleted ${result.deletedCount} old snapshot records from daily_stats.`,
-      nextStep: 'Starting today, only the 3:00 PM cron job will record fresh daily snapshots.',
+      message: `Successfully reset history and initialized clean baseline for ${stats.length} platforms.`,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

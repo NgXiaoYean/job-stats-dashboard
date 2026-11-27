@@ -550,10 +550,11 @@ export default function Dashboard() {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-600 font-semibold border-b">
                 <tr>
-                  <th className="px-3 py-2" title="When record was first created">Created At</th>
-                  <th className="px-3 py-2" title="Timestamp of latest ingestion">Updated At</th>
+                  <th className="px-3 py-2">Recorded At</th>
                   <th className="px-3 py-2">Source</th>
                   <th className="px-3 py-2">Total Posts</th>
+                  <th className="px-3 py-2" title="New job posts created since previous ingestion">New Posts (Created)</th>
+                  <th className="px-3 py-2" title="Existing or updated job posts">Existed / Updated</th>
                   <th className="px-3 py-2" title="Has Post ID, PostedDate + Time, URL, and Title">Complete</th>
                   <th className="px-3 py-2" title="Complete posts published within past 7 days">&le; 7 Days</th>
                   <th className="px-3 py-2" title="Complete posts published within past 30 days">&le; 30 Days</th>
@@ -561,18 +562,25 @@ export default function Dashboard() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredHistory.map((h: any, idx: number) => {
-                  const createdAtVal = h.createdAt || h.recordedAtDate || h.recordedAt;
-                  const updatedAtVal = h.updatedAt || h.recordedAtDate || h.recordedAt;
+                  const recDateVal = h.recordedAtDate || h.createdAt || h.recordedAt;
                   return (
                     <tr key={h._id || idx} className="hover:bg-slate-50">
-                      <td className="px-3 py-2 text-slate-500 font-mono text-[11px]">
-                        {createdAtVal ? new Date(createdAtVal).toLocaleString() : '—'}
-                      </td>
-                      <td className="px-3 py-2 text-slate-500 font-mono text-[11px]">
-                        {updatedAtVal ? new Date(updatedAtVal).toLocaleString() : '—'}
+                      <td
+                        className="px-3 py-2 text-slate-500 font-mono text-[11px]"
+                        title={`Created: ${h.createdAt || recDateVal} | Updated: ${h.updatedAt || recDateVal}`}
+                      >
+                        {recDateVal ? new Date(recDateVal).toLocaleString() : '—'}
                       </td>
                       <td className="px-3 py-2 font-medium text-slate-800">{h.source}</td>
-                      <td className="px-3 py-2">{h.totalPosts}</td>
+                      <td className="px-3 py-2 font-semibold text-slate-900">{h.totalPosts}</td>
+                      <td className="px-3 py-2">
+                        <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                          +{h.newPosts ?? h.totalPosts}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-slate-600 font-medium">
+                        {h.updatedPosts ?? 0}
+                      </td>
                       <td className="px-3 py-2">{h.completeFields}</td>
                       <td className="px-3 py-2">{h.within7d ?? 0}</td>
                       <td className="px-3 py-2">{h.within30d ?? 0}</td>
@@ -581,7 +589,7 @@ export default function Dashboard() {
                 })}
                 {filteredHistory.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="text-center py-6 text-slate-400">
+                    <td colSpan={8} className="text-center py-6 text-slate-400">
                       No snapshot records found for the selected date.
                     </td>
                   </tr>

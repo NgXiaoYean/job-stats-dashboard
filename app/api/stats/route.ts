@@ -49,6 +49,8 @@ export async function GET(request: Request) {
 
           return {
             ...doc,
+            newPosts: doc.newPosts !== undefined ? doc.newPosts : doc.totalPosts,
+            updatedPosts: doc.updatedPosts !== undefined ? doc.updatedPosts : 0,
             createdAt: doc.createdAt || doc.recordedAtDate || doc.recordedAt,
             updatedAt: doc.updatedAt || doc.recordedAtDate || doc.recordedAt,
             dateString: doc.dateString || fallbackDateStr,
