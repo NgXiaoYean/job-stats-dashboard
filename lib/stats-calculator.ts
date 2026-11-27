@@ -49,6 +49,10 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
     { name: 'Foundit', path: '/foundit/blue-collar' },
     { name: 'Jooble', path: '/jooble/jobs' },
     { name: 'JobHunter', path: '/jobhuntermy/jobs' },
+    { name: 'JobHunter (Part-Time)', path: '/jobhuntermy/jobs/part_time' },
+    { name: 'JobHunter (Event Crew)', path: '/jobhuntermy/jobs/event_crew' },
+    { name: 'JobHunter (Talent)', path: '/jobhuntermy/jobs/talent' },
+    { name: 'JobHunter (Specialist)', path: '/jobhuntermy/jobs/specialist' },
   ];
 
   const now = new Date();
