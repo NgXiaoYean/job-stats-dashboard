@@ -36,10 +36,10 @@ export async function GET(request: Request) {
           .collection('daily_stats')
           .find({ source: { $not: /^JobHunter \(/ } })
           .sort({ recordedAtDate: -1, createdAt: -1, source: 1 })
-          .limit(360)
+          .limit(500)
           .toArray();
 
-        history = rawHistory.map((doc: any) => {
+        const mapped = rawHistory.map((doc: any) => {
           const recDate = doc.recordedAtDate || doc.recordedAt || new Date();
           const d = new Date(recDate);
           const y = d.getFullYear();
@@ -54,6 +54,27 @@ export async function GET(request: Request) {
             dateString: doc.dateString || fallbackDateStr,
           };
         });
+
+        // Deduplicate: Keep only the latest snapshot per platform per day
+        const seenDayPlatform = new Set<string>();
+        const duplicateIds: any[] = [];
+        history = [];
+
+        for (const doc of mapped) {
+          const key = `${doc.dateString}_${doc.source}`;
+          if (!seenDayPlatform.has(key)) {
+            seenDayPlatform.add(key);
+            history.push(doc);
+          } else {
+            // Older duplicate snapshot from repeated page visits on the same day
+            if (doc._id) duplicateIds.push(doc._id);
+          }
+        }
+
+        // Purge older duplicate entries from MongoDB so database stays clean
+        if (duplicateIds.length > 0) {
+          await db.collection('daily_stats').deleteMany({ _id: { $in: duplicateIds } });
+        }
       } else {
         mongoMessage = 'MongoClient failed to initialize.';
       }
