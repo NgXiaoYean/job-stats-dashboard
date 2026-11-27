@@ -28,13 +28,32 @@ export async function GET(request: Request) {
         mongoMessage = 'Daily snapshots active (saves at 3:00 PM)';
         const db = client.db('job_analytics');
 
-        // Fetch snapshots recorded by 3:00 PM cron (sorted by date desc, then source name asc)
-        history = await db
+        // Automatically purge any lingering obsolete subcategory records
+        await db.collection('daily_stats').deleteMany({ source: { $regex: /^JobHunter \(/ } });
+
+        // Fetch snapshots recorded by cron (sorted by date desc, then source name asc)
+        const rawHistory = await db
           .collection('daily_stats')
-          .find({})
-          .sort({ recordedAtDate: -1, source: 1 })
-          .limit(60)
+          .find({ source: { $not: /^JobHunter \(/ } })
+          .sort({ recordedAtDate: -1, createdAt: -1, source: 1 })
+          .limit(360)
           .toArray();
+
+        history = rawHistory.map((doc: any) => {
+          const recDate = doc.recordedAtDate || doc.recordedAt || new Date();
+          const d = new Date(recDate);
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          const fallbackDateStr = `${y}-${m}-${day}`;
+
+          return {
+            ...doc,
+            createdAt: doc.createdAt || doc.recordedAtDate || doc.recordedAt,
+            updatedAt: doc.updatedAt || doc.recordedAtDate || doc.recordedAt,
+            dateString: doc.dateString || fallbackDateStr,
+          };
+        });
       } else {
         mongoMessage = 'MongoClient failed to initialize.';
       }

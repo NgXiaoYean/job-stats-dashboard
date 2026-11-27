@@ -17,13 +17,38 @@ export async function GET(request: Request) {
     const client = await clientPromise;
     if (client) {
       const db = client.db('job_analytics');
-      await db.collection('daily_stats').insertMany(
-        stats.map((s) => ({
-          ...s,
-          recordedAtDate: new Date(s.recordedAt),
-        }))
-      );
-      return NextResponse.json({ success: true, count: stats.length, savedToMongo: true });
+      const collection = db.collection('daily_stats');
+
+      // Purge any obsolete subcategory records
+      await collection.deleteMany({ source: { $regex: /^JobHunter \(/ } });
+
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const dateString = `${year}-${month}-${day}`;
+
+      const operations = stats.map((s) => ({
+        updateOne: {
+          filter: { source: s.source, dateString },
+          update: {
+            $set: {
+              ...s,
+              dateString,
+              updatedAt: now,
+              recordedAtDate: now,
+            },
+            $setOnInsert: {
+              createdAt: now,
+            },
+          },
+          upsert: true,
+        },
+      }));
+
+      await collection.bulkWrite(operations);
+
+      return NextResponse.json({ success: true, count: stats.length, date: dateString, savedToMongo: true });
     }
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });

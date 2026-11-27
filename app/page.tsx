@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Activity,
   AlertTriangle,
+  Calendar,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -62,6 +63,7 @@ export default function Dashboard() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [selectedDateFilter, setSelectedDateFilter] = useState<string>('all');
 
   const [selectedMultiLink, setSelectedMultiLink] = useState<{
     source: string;
@@ -121,6 +123,38 @@ export default function Dashboard() {
   const totalMissingUrl = liveStats.reduce((acc, s) => acc + (s.missing?.missingUrl || 0), 0);
   const totalMissingPostId = liveStats.reduce((acc, s) => acc + (s.missing?.missingPostId || 0), 0);
   const totalMissingLocation = liveStats.reduce((acc, s) => acc + (s.missing?.missingLocation || 0), 0);
+
+  const formatDateKey = (val: any): string => {
+    if (!val) return '';
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const formatDisplayDate = (key: string): string => {
+    const parts = key.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return key;
+  };
+
+  const availableDates = Array.from(
+    new Set(
+      (data?.history || [])
+        .map((h: any) => h.dateString || formatDateKey(h.createdAt || h.recordedAtDate || h.recordedAt))
+        .filter(Boolean)
+    )
+  ).sort((a, b) => b.localeCompare(a));
+
+  const filteredHistory = (data?.history || []).filter((h: any) => {
+    if (selectedDateFilter === 'all') return true;
+    const key = h.dateString || formatDateKey(h.createdAt || h.recordedAtDate || h.recordedAt);
+    return key === selectedDateFilter;
+  });
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -428,7 +462,7 @@ export default function Dashboard() {
                   DATABASE HISTORY
                 </span>
                 <h3 className="text-sm font-semibold text-slate-900">
-                  Daily Snapshots ({data.history.length} records)
+                  Daily Snapshots ({filteredHistory.length} {selectedDateFilter !== 'all' ? `records for ${formatDisplayDate(selectedDateFilter)}` : `records`})
                 </h3>
               </div>
               <div className="text-xs text-slate-500 mt-1 space-y-0.5">
@@ -452,11 +486,72 @@ export default function Dashboard() {
               Reset History
             </button>
           </div>
-          <div className="overflow-x-auto max-h-64">
+
+          {/* Date Filter Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4 p-3 rounded-xl bg-slate-50 border border-slate-100">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                Filter by Date:
+              </span>
+              <select
+                value={selectedDateFilter}
+                onChange={(e) => setSelectedDateFilter(e.target.value)}
+                className="text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-slate-700 font-medium focus:ring-1 focus:ring-indigo-500 cursor-pointer shadow-sm"
+              >
+                <option value="all">All Dates ({data.history.length} records)</option>
+                {availableDates.map((dateKey) => {
+                  const count = (data.history || []).filter((h: any) => {
+                    const key = h.dateString || formatDateKey(h.createdAt || h.recordedAtDate || h.recordedAt);
+                    return key === dateKey;
+                  }).length;
+                  return (
+                    <option key={dateKey} value={dateKey}>
+                      {formatDisplayDate(dateKey)} ({count} platforms)
+                    </option>
+                  );
+                })}
+              </select>
+
+              {/* Quick Date Pills for recent dates */}
+              <div className="flex items-center gap-1">
+                {availableDates.slice(0, 4).map((dateKey) => {
+                  const isSelected = selectedDateFilter === dateKey;
+                  return (
+                    <button
+                      key={dateKey}
+                      type="button"
+                      onClick={() => setSelectedDateFilter(isSelected ? 'all' : dateKey)}
+                      className={`px-2 py-0.5 text-xs rounded-md font-medium transition cursor-pointer ${
+                        isSelected
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'bg-white text-slate-600 hover:bg-slate-200 hover:text-slate-900 border border-slate-200'
+                      }`}
+                    >
+                      {formatDisplayDate(dateKey)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {selectedDateFilter !== 'all' && (
+              <button
+                type="button"
+                onClick={() => setSelectedDateFilter('all')}
+                className="text-xs text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer"
+              >
+                Clear filter (Show all)
+              </button>
+            )}
+          </div>
+
+          <div className="overflow-x-auto max-h-72">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-600 font-semibold border-b">
                 <tr>
-                  <th className="px-3 py-2">Recorded At</th>
+                  <th className="px-3 py-2" title="When record was first created">Created At</th>
+                  <th className="px-3 py-2" title="Timestamp of latest ingestion">Updated At</th>
                   <th className="px-3 py-2">Source</th>
                   <th className="px-3 py-2">Total Posts</th>
                   <th className="px-3 py-2" title="Has Post ID, PostedDate + Time, URL, and Title">Complete</th>
@@ -465,18 +560,32 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {data.history.map((h: any, idx: number) => (
-                  <tr key={idx} className="hover:bg-slate-50">
-                    <td className="px-3 py-2 text-slate-500">
-                      {new Date(h.recordedAtDate || h.recordedAt).toLocaleString()}
+                {filteredHistory.map((h: any, idx: number) => {
+                  const createdAtVal = h.createdAt || h.recordedAtDate || h.recordedAt;
+                  const updatedAtVal = h.updatedAt || h.recordedAtDate || h.recordedAt;
+                  return (
+                    <tr key={h._id || idx} className="hover:bg-slate-50">
+                      <td className="px-3 py-2 text-slate-500 font-mono text-[11px]">
+                        {createdAtVal ? new Date(createdAtVal).toLocaleString() : '—'}
+                      </td>
+                      <td className="px-3 py-2 text-slate-500 font-mono text-[11px]">
+                        {updatedAtVal ? new Date(updatedAtVal).toLocaleString() : '—'}
+                      </td>
+                      <td className="px-3 py-2 font-medium text-slate-800">{h.source}</td>
+                      <td className="px-3 py-2">{h.totalPosts}</td>
+                      <td className="px-3 py-2">{h.completeFields}</td>
+                      <td className="px-3 py-2">{h.within7d ?? 0}</td>
+                      <td className="px-3 py-2">{h.within30d ?? 0}</td>
+                    </tr>
+                  );
+                })}
+                {filteredHistory.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="text-center py-6 text-slate-400">
+                      No snapshot records found for the selected date.
                     </td>
-                    <td className="px-3 py-2 font-medium text-slate-800">{h.source}</td>
-                    <td className="px-3 py-2">{h.totalPosts}</td>
-                    <td className="px-3 py-2">{h.completeFields}</td>
-                    <td className="px-3 py-2">{h.within7d ?? 0}</td>
-                    <td className="px-3 py-2">{h.within30d ?? 0}</td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
