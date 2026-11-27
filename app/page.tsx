@@ -129,20 +129,12 @@ export default function Dashboard() {
       {/* Header */}
       <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-              Job Sources Feed Analytics
-            </h1>
-            <span className="text-xs bg-amber-100 text-amber-800 font-medium px-2 py-0.5 rounded-full">
-              Temporary Tool
-            </span>
-          </div>
-          <p className="text-sm text-slate-500 mt-1">
-            Real-time post counts, field completeness, missing fields detection, date recency, and location metrics.
-          </p>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            Job Sources Feed Analytics
+          </h1>
         </div>
 
-        {/* MongoDB Status Pill & Diagnostic Message */}
+        {/* Database Status Pill */}
         <div className="flex flex-col items-start md:items-end gap-1 self-start md:self-auto max-w-sm">
           <div
             className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border ${
@@ -154,8 +146,8 @@ export default function Dashboard() {
             <Database className="w-3.5 h-3.5" />
             <span>
               {data?.mongoConnected
-                ? 'MongoDB Connected'
-                : 'MongoDB Not Connected'}
+                ? 'Database Connected'
+                : 'Database Not Connected'}
             </span>
           </div>
           {data?.mongoMessage && (
@@ -166,13 +158,10 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Control Bar: Feed Source & Refresh */}
+      {/* Control Bar: Refresh & Actions */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-8 flex flex-col sm:flex-row gap-3 items-center justify-between">
-        <div className="flex items-center gap-2 text-xs text-slate-600">
-          <span className="font-semibold text-slate-700">Source:</span>
-          <span className="font-mono bg-slate-100 text-slate-800 px-2.5 py-1 rounded-md border border-slate-200 font-medium">
-            https://crawling.qtimeweb.com/article/news
-          </span>
+        <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+          <span>Monitoring 12 job platforms</span>
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
@@ -188,7 +177,7 @@ export default function Dashboard() {
           <button
             onClick={() => fetchStats()}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-medium rounded-lg transition"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-medium rounded-lg transition cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh Now</span>
@@ -267,10 +256,10 @@ export default function Dashboard() {
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                 LIVE CRAWL
               </span>
-              <h2 className="font-semibold text-slate-900 text-sm">Detailed Source Breakdown & Missing Field Diagnostics</h2>
+              <h2 className="font-semibold text-slate-900 text-sm">Live Job Platform Status</h2>
             </div>
             <p className="text-xs text-slate-500 mt-1">
-              Live real-time feed inspection directly from the crawling server (not database). Core fields checked: Platform, Post ID, PostedDate + Time, URL (Job), Title.
+              Real-time live status across all job platforms. Verifies complete post details (Title, Date, Link, and Post ID).
             </p>
           </div>
           <span className="text-xs text-slate-500 font-medium bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 shrink-0 self-start sm:self-auto">
@@ -437,11 +426,11 @@ export default function Dashboard() {
                   DATABASE HISTORY
                 </span>
                 <h3 className="text-sm font-semibold text-slate-900">
-                  Daily Snapshots in MongoDB ({data.history.length} records)
+                  Daily Snapshots ({data.history.length} records)
                 </h3>
               </div>
               <div className="text-xs text-slate-500">
-                Stored permanently in MongoDB Atlas once every day at 3:00 PM by the automated cron job.
+                Daily snapshot recorded automatically every day at 3:00 PM to track platform history.
               </div>
             </div>
             <button
@@ -487,18 +476,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Cleanup / Temporary Note */}
       <footer className="text-center text-xs text-slate-400 py-6 border-t border-slate-200">
-        <p>
-          This is a self-contained temporary dashboard created at{' '}
-          <code className="text-slate-600 bg-slate-100 px-1 py-0.5 rounded">
-            GitHub/job-stats-dashboard
-          </code>
-          .
-        </p>
-        <p className="mt-1">
-          To remove anytime: simply delete the folder and remove the project from Vercel.
-        </p>
+        <p>Job Sources Analytics Dashboard</p>
       </footer>
 
       {/* Category Feeds Modal / Tabs */}

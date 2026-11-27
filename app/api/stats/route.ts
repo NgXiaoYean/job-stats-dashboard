@@ -25,7 +25,7 @@ export async function GET(request: Request) {
         // Verify connection with ping
         await client.db('admin').command({ ping: 1 });
         mongoConnected = true;
-        mongoMessage = 'Connected to MongoDB Atlas (Daily Snapshots at 3:00 PM)';
+        mongoMessage = 'Daily snapshots active (saves at 3:00 PM)';
         const db = client.db('job_analytics');
 
         // Fetch snapshots recorded by 3:00 PM cron (sorted by date desc, then source name asc)
