@@ -256,9 +256,14 @@ export default function Dashboard() {
               </span>
               <h2 className="font-semibold text-slate-900 text-sm">Live Job Platform Status</h2>
             </div>
-            <p className="text-xs text-slate-500 mt-1">
-              Real-time live status across all job platforms. Verifies complete post details (Title, Date, Link, and Post ID).
-            </p>
+            <div className="text-xs text-slate-500 mt-1 space-y-0.5">
+              <div>
+                <span className="font-semibold text-slate-700">Storage:</span> Real-time live check (Not stored in database).
+              </div>
+              <div>
+                <span className="font-semibold text-slate-700">Core fields required:</span> Title, Post ID, Job Link, and Posted Date & Time.
+              </div>
+            </div>
           </div>
           <span className="text-xs text-slate-500 font-medium bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 shrink-0 self-start sm:self-auto">
             Last checked: {data?.fetchedAt ? new Date(data.fetchedAt).toLocaleTimeString() : 'Loading...'}
@@ -426,8 +431,13 @@ export default function Dashboard() {
                   Daily Snapshots ({data.history.length} records)
                 </h3>
               </div>
-              <div className="text-xs text-slate-500">
-                Daily snapshot recorded automatically every day at 3:00 PM to track platform history.
+              <div className="text-xs text-slate-500 mt-1 space-y-0.5">
+                <div>
+                  <span className="font-semibold text-slate-700">Storage:</span> Stored in database (Ingested every day at 3:00 PM).
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-700">Purpose:</span> Tracks daily posting trends and historical platform data over time.
+                </div>
               </div>
             </div>
             <button
