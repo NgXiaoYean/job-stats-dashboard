@@ -49,8 +49,8 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
   }
 
   const sources: SourceConfig[] = [
-    { name: 'Maukerja', path: '/maukerja/jobs' },
-    { name: 'Ricebowl', path: '/ricebowl/jobs' },
+    { name: 'FastJobs', path: '/fastjobs/jobs' },
+    { name: 'Foundit', path: '/foundit/blue-collar' },
     {
       name: 'GoGet',
       path: '/goget/jobs',
@@ -62,14 +62,8 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
         { label: 'Contract', path: '/goget/jobs/contract' },
       ],
     },
-    { name: 'FastJobs', path: '/fastjobs/jobs' },
-    { name: 'Troopers', path: '/troopers/jobs' },
-    { name: 'JobStore', path: '/jobstore/jobs' },
     { name: 'Graduan', path: '/graduan/jobs' },
     { name: 'Hiredly', path: '/hiredly' },
-    { name: 'LokalGig', path: '/lokalgig/gigs' },
-    { name: 'Foundit', path: '/foundit/blue-collar' },
-    { name: 'Jooble', path: '/jooble/jobs' },
     {
       name: 'JobHunter',
       path: '/jobhuntermy/jobs',
@@ -81,6 +75,12 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
         { label: 'Specialist', path: '/jobhuntermy/jobs/specialist' },
       ],
     },
+    { name: 'JobStore', path: '/jobstore/jobs' },
+    { name: 'Jooble', path: '/jooble/jobs' },
+    { name: 'LokalGig', path: '/lokalgig/gigs' },
+    { name: 'Maukerja', path: '/maukerja/jobs' },
+    { name: 'Ricebowl', path: '/ricebowl/jobs' },
+    { name: 'Troopers', path: '/troopers/jobs' },
   ];
 
   const now = new Date();

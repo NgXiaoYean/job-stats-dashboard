@@ -28,12 +28,12 @@ export async function GET(request: Request) {
         mongoMessage = 'Connected to MongoDB Atlas (Daily Snapshots at 3:00 PM)';
         const db = client.db('job_analytics');
 
-        // Fetch the last 20 snapshots recorded by 3:00 PM cron
+        // Fetch snapshots recorded by 3:00 PM cron (sorted by date desc, then source name asc)
         history = await db
           .collection('daily_stats')
           .find({})
-          .sort({ recordedAtDate: -1 })
-          .limit(20)
+          .sort({ recordedAtDate: -1, source: 1 })
+          .limit(60)
           .toArray();
       } else {
         mongoMessage = 'MongoClient failed to initialize.';

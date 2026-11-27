@@ -106,7 +106,7 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [autoRefresh]);
 
-  const liveStats = data?.live || [];
+  const liveStats = [...(data?.live || [])].sort((a, b) => a.source.localeCompare(b.source));
   const totalPosts = liveStats.reduce((acc, s) => acc + s.totalPosts, 0);
   const totalComplete = liveStats.reduce((acc, s) => acc + s.completeFields, 0);
   const totalIncomplete = liveStats.reduce((acc, s) => acc + (s.incompletePosts || 0), 0);
@@ -463,9 +463,9 @@ export default function Dashboard() {
                   <th className="px-3 py-2">Recorded At</th>
                   <th className="px-3 py-2">Source</th>
                   <th className="px-3 py-2">Total Posts</th>
-                  <th className="px-3 py-2">Complete</th>
-                  <th className="px-3 py-2">Location</th>
-                  <th className="px-3 py-2">&le; 7 Days</th>
+                  <th className="px-3 py-2" title="Has Post ID, PostedDate + Time, URL, and Title">Complete</th>
+                  <th className="px-3 py-2" title="Complete posts published within past 7 days">&le; 7 Days</th>
+                  <th className="px-3 py-2" title="Complete posts published within past 30 days">&le; 30 Days</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -477,8 +477,8 @@ export default function Dashboard() {
                     <td className="px-3 py-2 font-medium text-slate-800">{h.source}</td>
                     <td className="px-3 py-2">{h.totalPosts}</td>
                     <td className="px-3 py-2">{h.completeFields}</td>
-                    <td className="px-3 py-2">{h.hasLocation}</td>
-                    <td className="px-3 py-2">{h.within7d}</td>
+                    <td className="px-3 py-2">{h.within7d ?? 0}</td>
+                    <td className="px-3 py-2">{h.within30d ?? 0}</td>
                   </tr>
                 ))}
               </tbody>
