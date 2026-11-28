@@ -50,6 +50,46 @@ function csvCell(value: string): string {
   return `"${safe.replace(/"/g, '""')}"`;
 }
 
+type CoverageRow = (typeof FIELDS)[number] & {
+  Indeed: number;
+  JobStreet: number;
+  indeedTotal: number;
+  jobStreetTotal: number;
+};
+
+function CoverageSection({ id, title, description, rows, showCombined = false }: {
+  id: string;
+  title: string;
+  description: string;
+  rows: CoverageRow[];
+  showCombined?: boolean;
+}) {
+  const coverageCell = (count: number, total: number) => (
+    <td className={`px-4 py-2 text-right tabular-nums ${total && count === 0 ? 'font-semibold text-rose-700' : count === total && total ? 'text-emerald-700' : 'text-slate-700'}`}>
+      {total ? `${count}/${total}` : '—'}
+    </td>
+  );
+  return <section className="mb-6 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden" aria-labelledby={id}>
+    <div className="border-b border-slate-200 p-4">
+      <h2 id={id} className="font-semibold">{title}</h2>
+      <p className="mt-0.5 text-xs text-slate-500">{description}</p>
+    </div>
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[540px] text-left text-sm">
+        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600"><tr><th scope="col" className="px-4 py-3">Field</th><th scope="col" className="px-4 py-3 text-right">Indeed</th><th scope="col" className="px-4 py-3 text-right">JobStreet</th>{showCombined && <th scope="col" className="px-4 py-3 text-right">All unique</th>}</tr></thead>
+        <tbody className="divide-y divide-slate-100">
+          {rows.map((field) => <tr key={field.key}>
+            <th scope="row" className="px-4 py-2 font-medium text-slate-700">{field.label}</th>
+            {coverageCell(field.Indeed, field.indeedTotal)}
+            {coverageCell(field.JobStreet, field.jobStreetTotal)}
+            {showCombined && coverageCell(field.Indeed + field.JobStreet, field.indeedTotal + field.jobStreetTotal)}
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </section>;
+}
+
 export default function ApifyReviewPage() {
   const [data, setData] = useState<ReviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,7 +106,7 @@ export default function ApifyReviewPage() {
   const tableRef = useRef<HTMLTableElement>(null);
   const [tableWidth, setTableWidth] = useState(0);
 
-  function queryString(offset = 0, limit = 100, sync = false) {
+  function queryString(offset = 0, limit = 500, sync = false) {
     const params = new URLSearchParams({ offset: String(offset), limit: String(limit), sync: sync ? '1' : '0' });
     if (platform !== 'all') params.set('platform', platform);
     if (windowFilter !== 'all') params.set('days', windowFilter);
@@ -75,16 +115,28 @@ export default function ApifyReviewPage() {
     return params.toString();
   }
 
-  async function load(append = false, sync = false) {
+  async function load(sync = false) {
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError('');
+    setData(null);
     try {
-      const response = await fetch(`/api/apify/jobs?${queryString(append ? data?.jobs.length || 0 : 0, 100, sync)}`, { cache: 'no-store' });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const next: ReviewResponse = await response.json();
-      if (requestId !== requestIdRef.current) return;
-      setData((previous) => append && previous ? { ...next, jobs: [...previous.jobs, ...next.jobs] } : next);
+      let offset = 0;
+      let firstPage: ReviewResponse | null = null;
+      const jobsByKey = new Map<string, ReviewJob>();
+      while (true) {
+        const response = await fetch(`/api/apify/jobs?${queryString(offset, 500, sync && offset === 0)}`, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const page: ReviewResponse = await response.json();
+        if (requestId !== requestIdRef.current) return;
+        firstPage ||= page;
+        for (const job of page.jobs) jobsByKey.set(`${job.platform}:${job.postId}`, job);
+        setData({ ...firstPage, jobs: Array.from(jobsByKey.values()), nextOffset: page.nextOffset,
+          totalMatches: page.totalMatches, totalUnique: page.totalUnique });
+        if (page.nextOffset == null) break;
+        if (page.nextOffset <= offset || page.jobs.length === 0) throw new Error('Archive paging did not advance');
+        offset = page.nextOffset;
+      }
     } catch (err) {
       if (requestId === requestIdRef.current) setError(err instanceof Error ? err.message : 'Could not load Apify data');
     } finally {
@@ -93,8 +145,8 @@ export default function ApifyReviewPage() {
   }
 
   useEffect(() => {
-    const timer = setTimeout(() => void load(false, true), search ? 300 : 0);
-    return () => clearTimeout(timer);
+    const timer = setTimeout(() => void load(true), search ? 300 : 0);
+    return () => { clearTimeout(timer); requestIdRef.current++; };
   }, [platform, windowFilter, reviewOnly, search]);
 
   const filtered = data?.jobs || [];
@@ -119,6 +171,13 @@ export default function ApifyReviewPage() {
       jobStreetTotal: data?.runs.find((run) => run.platform === 'JobStreet')?.recordCount ?? byPlatform.JobStreet.length,
     }));
   }, [data]);
+  const uniqueCoverage = FIELDS.map((field) => ({
+    ...field,
+    Indeed: data?.uniqueCoverage?.Indeed?.coverage[field.key] || 0,
+    JobStreet: data?.uniqueCoverage?.JobStreet?.coverage[field.key] || 0,
+    indeedTotal: data?.uniqueCoverage?.Indeed?.total || 0,
+    jobStreetTotal: data?.uniqueCoverage?.JobStreet?.total || 0,
+  }));
 
   useEffect(() => {
     const table = tableRef.current;
@@ -193,7 +252,7 @@ export default function ApifyReviewPage() {
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => void downloadCsv()} disabled={!totalMatches || exporting} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50"><Download className="w-4 h-4" /> {exporting ? 'Exporting…' : 'Export CSV'}</button>
-          <button type="button" onClick={() => void load(false, true)} disabled={loading} className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh</button>
+          <button type="button" onClick={() => void load(true)} disabled={loading} className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh</button>
         </div>
       </div>
 
@@ -214,31 +273,17 @@ export default function ApifyReviewPage() {
       {error && <div role="alert" className="mb-5 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">Could not load Apify data: {error}</div>}
       {data?.syncError && <div role="status" className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{data.syncError} Saved records are still available.</div>}
 
-      {data && <section className="mb-6 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden" aria-labelledby="coverage-title">
-        <div className="border-b border-slate-200 p-4">
-          <h2 id="coverage-title" className="font-semibold">Field coverage in latest runs</h2>
-          <p className="mt-0.5 text-xs text-slate-500">Populated records for each of your 16 fields, before table filters. “N” is an unknown state and counts as missing.</p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[540px] text-left text-sm">
-            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600"><tr><th scope="col" className="px-4 py-3">Field</th><th scope="col" className="px-4 py-3 text-right">Indeed</th><th scope="col" className="px-4 py-3 text-right">JobStreet</th></tr></thead>
-            <tbody className="divide-y divide-slate-100">
-              {coverage.map((field) => <tr key={field.key}>
-                <th scope="row" className="px-4 py-2 font-medium text-slate-700">{field.label}</th>
-                {(['Indeed', 'JobStreet'] as const).map((platform) => {
-                  const count = field[platform];
-                  const total = platform === 'Indeed' ? field.indeedTotal : field.jobStreetTotal;
-                  return <td key={platform} className={`px-4 py-2 text-right tabular-nums ${total && count === 0 ? 'font-semibold text-rose-700' : count === total && total ? 'text-emerald-700' : 'text-slate-700'}`}>{total ? `${count}/${total}` : '—'}</td>;
-                })}
-              </tr>)}
-            </tbody>
-          </table>
-        </div>
-      </section>}
+      {data && <CoverageSection id="coverage-title" title="Field coverage in latest runs"
+        description="Populated records for each of your 16 fields, before table filters. “N” is an unknown state and counts as missing."
+        rows={coverage} />}
+      {data?.archived && data.uniqueCoverage && <CoverageSection id="unique-coverage-title"
+        title="Field coverage in unique jobs saved"
+        description="Populated fields across all saved Indeed and JobStreet jobs, before table filters. Each platform and post ID counts once."
+        rows={uniqueCoverage} showCombined />}
 
       <section className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-200 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
-          <div><h2 className="font-semibold">Mapped records</h2><p className="text-xs text-slate-500 mt-0.5">{filtered.length} loaded of {totalMatches} matching unique jobs ({totalUnique} saved). Use the scrollbar below to review all fields; select a title for full text.</p></div>
+          <div><h2 className="font-semibold">Mapped records</h2><p className="text-xs text-slate-500 mt-0.5">Showing {filtered.length} of {totalMatches} matching unique jobs ({totalUnique} saved). Use the scrollbar below to review all fields; select a title for full text.</p></div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative"><Search className="absolute left-2.5 top-2.5 w-4 h-4 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search jobs" className="w-52 rounded-lg border border-slate-300 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" /></div>
             <select aria-label="Platform" value={platform} onChange={(event) => setPlatform(event.target.value)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white"><option value="all">Both platforms</option><option value="Indeed">Indeed</option><option value="JobStreet">JobStreet</option></select>
@@ -259,11 +304,11 @@ export default function ApifyReviewPage() {
             <tbody className="divide-y divide-slate-100">
               {filtered.map((job, index) => <tr key={`${job.platform}:${job.postId || index}`} className="hover:bg-slate-50 align-top">{FIELDS.map((field) => <td key={field.key} className={`${field.width} max-w-96 px-3 py-3 border-r border-slate-100 ${!job[field.key] && CORE_FIELDS.includes(field.key) ? 'bg-rose-50' : ''}`}>{cell(job, field.key)}</td>)}</tr>)}
               {!loading && filtered.length === 0 && <tr><td colSpan={FIELDS.length} className="px-6 py-12 text-center text-sm text-slate-500">No records match these filters.</td></tr>}
-              {loading && !data && <tr><td colSpan={FIELDS.length} className="px-6 py-12 text-center text-sm text-slate-500">Loading latest Apify runs…</td></tr>}
+              {loading && !data && <tr><td colSpan={FIELDS.length} className="px-6 py-12 text-center text-sm text-slate-500">Loading saved Apify jobs…</td></tr>}
             </tbody>
           </table>
         </div>
-        {data?.nextOffset != null && <div className="border-t border-slate-200 p-4 text-center"><button type="button" onClick={() => void load(true, false)} disabled={loading} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50">{loading ? 'Loading…' : `Load more (${totalMatches - filtered.length} remaining)`}</button></div>}
+        {loading && data?.nextOffset != null && <div className="border-t border-slate-200 p-4 text-center text-sm text-slate-500">Loading remaining unique jobs…</div>}
       </section>
 
       <p className="mt-4 text-xs text-slate-500">“N” means a general or unknown state. Image links use an actor-provided company logo when available. JobStreet descriptions use the actor’s teaser when full details are unavailable. Requirement text is extracted only when an explicit requirements heading appears. Company names come from actor output.</p>

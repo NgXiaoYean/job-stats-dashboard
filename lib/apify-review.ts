@@ -46,6 +46,7 @@ export interface ReviewResponse {
   jobs: ReviewJob[];
   fetchedAt: string;
   totalUnique?: number;
+  uniqueCoverage?: Partial<Record<ReviewJob['platform'], { total: number; coverage: Record<ReviewFieldKey, number> }>>;
   totalMatches?: number;
   nextOffset?: number | null;
   archived?: boolean;

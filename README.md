@@ -61,8 +61,10 @@ Open `/apify` on the running dashboard to review all saved Indeed and JobStreet
 jobs in the 16-field format. MongoDB uses a unique `(platform, postId)` index, so
 repeat runs update existing jobs and new IDs increase the archive. The page
 includes server-side source, date, search, and missing-core-field filters,
-paginated rows, full job details, and CSV export of all matching jobs. Coverage
-counts still describe the latest imported run from each actor. Missing values
+automatically loads every matching unique job, and offers full job details and
+CSV export. Separate 16-field coverage tables describe the latest imported run
+and the full saved archive, with counts for Indeed, JobStreet, and all unique
+jobs. Missing values
 are shown as blank; requirement text is extracted only when a clear requirements
 section is present in the actor's description. Without `MONGODB_URI`, the page
 falls back to the latest runs without an archive.

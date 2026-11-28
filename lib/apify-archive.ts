@@ -2,13 +2,18 @@ import type { AnyBulkWriteOperation, Filter } from 'mongodb';
 import clientPromise from './mongodb';
 import {
   ACTORS, fetchApifyReviewRun, listSucceededApifyRuns,
-  type ReviewJob, type ReviewResponse, type ReviewRun,
+  type ReviewFieldKey, type ReviewJob, type ReviewResponse, type ReviewRun,
 } from './apify-review';
 import type { JobSourceStat } from './stats-calculator';
 
 const DB_NAME = 'job_analytics';
 const JOBS_COLLECTION = 'apify_jobs';
 const RUNS_COLLECTION = 'apify_ingested_runs';
+const COVERAGE_FIELDS: ReviewFieldKey[] = [
+  'platform', 'postId', 'postedAt', 'jobUrl', 'title', 'mediaUrl', 'address', 'state',
+  'district', 'lingo', 'employmentType', 'jobType', 'salary', 'company',
+  'requirement', 'description',
+];
 
 interface ArchivedJob extends ReviewJob {
   firstSeenAt: Date;
@@ -211,14 +216,33 @@ export async function readApifyArchive(query: ArchiveQuery = {}): Promise<Review
   if (conditions.length) filter.$and = conditions;
   const offset = Math.max(0, query.offset || 0);
   const limit = Math.min(500, Math.max(1, query.limit || 100));
-  const [records, totalUnique, totalMatches, latest] = await Promise.all([
+  const coverageGroup = Object.fromEntries(COVERAGE_FIELDS.filter((field) => field !== 'platform').map((field) => [
+    field,
+    { $sum: { $cond: [{ $and: [
+      { $ne: [{ $ifNull: [`$${field}`, ''] }, ''] },
+      ...(field === 'state' ? [{ $ne: ['$state', 'N'] }] : []),
+    ] }, 1, 0] } },
+  ]));
+  const [records, totalUnique, totalMatches, latest, coverageStats] = await Promise.all([
     jobs.find(filter).sort({ postedAt: -1, firstSeenAt: -1, platform: 1, postId: 1 })
       .skip(offset).limit(limit).project({ _id: 0 }).toArray(),
     jobs.countDocuments(),
     jobs.countDocuments(filter),
     Promise.all(ACTORS.map(async (actor) => runs.find({ platform: actor.platform })
       .sort({ finishedAt: -1 }).limit(1).next())),
+    offset === 0
+      ? jobs.aggregate<Record<string, unknown>>([{ $group: { _id: '$platform', total: { $sum: 1 }, ...coverageGroup } }]).toArray()
+      : Promise.resolve([]),
   ]);
+  const uniqueCoverage = offset === 0 ? Object.fromEntries(coverageStats.map((row) => [
+    row._id,
+    {
+      total: Number(row.total),
+      coverage: Object.fromEntries(COVERAGE_FIELDS.map((field) => [
+        field, field === 'platform' ? Number(row.total) : Number(row[field] || 0),
+      ])),
+    },
+  ])) as ReviewResponse['uniqueCoverage'] : undefined;
   return {
     runs: latest.map((run, index) => run as unknown as ReviewRun || {
       platform: ACTORS[index].platform, actorUrl: ACTORS[index].actorUrl,
@@ -227,6 +251,7 @@ export async function readApifyArchive(query: ArchiveQuery = {}): Promise<Review
     jobs: records as unknown as ReviewJob[],
     fetchedAt: new Date().toISOString(),
     totalUnique,
+    uniqueCoverage,
     totalMatches,
     nextOffset: offset + records.length < totalMatches ? offset + records.length : null,
     archived: true,
