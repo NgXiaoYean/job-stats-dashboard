@@ -14,6 +14,8 @@ export interface SourceSubLink {
 export interface JobSourceStat {
   source: string;
   url: string;
+  sourceType?: 'rss' | 'apify';
+  finishedAt?: string;
   subLinks?: SourceSubLink[];
   totalPosts: number;
   newPosts?: number;
@@ -90,14 +92,13 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
   const day7Ago = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const day30Ago = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-  const results: JobSourceStat[] = [];
-
-  for (const s of sources) {
+  const results = await Promise.all(sources.map(async (s): Promise<JobSourceStat> => {
     const feedUrl = `${cleanRoot}${s.path}`;
     const endpoint = `${feedUrl}?format=json&limit=100`;
     try {
       const res = await fetch(endpoint, {
         cache: 'no-store',
+        signal: AbortSignal.timeout(5000),
         headers: {
           'Accept': 'application/json',
           'User-Agent': 'JobStatsDashboard/1.0',
@@ -197,7 +198,7 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
       const total = items.length;
       const incompletePosts = Math.max(0, total - completeFields);
 
-      results.push({
+      return {
         source: s.name,
         url: feedUrl,
         subLinks: s.subLinks?.map((sub) => ({
@@ -222,9 +223,9 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
         within30d,
         postIds,
         recordedAt: now.toISOString(),
-      });
+      };
     } catch (err: any) {
-      results.push({
+      return {
         source: s.name,
         url: feedUrl,
         subLinks: s.subLinks?.map((sub) => ({
@@ -249,9 +250,9 @@ export async function fetchAndComputeStats(baseUrl?: string): Promise<JobSourceS
         within30d: 0,
         recordedAt: now.toISOString(),
         error: err.message || 'Failed to fetch feed',
-      });
+      };
     }
-  }
+  }));
 
   return results;
 }

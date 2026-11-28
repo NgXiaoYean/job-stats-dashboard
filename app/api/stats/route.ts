@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { fetchAndComputeStats } from '@/lib/stats-calculator';
+import { fetchLatestApifyStats } from '@/lib/apify-stats';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,7 +10,11 @@ export async function GET(request: Request) {
   const customBaseUrl = searchParams.get('baseUrl') || undefined;
 
   // 1. Compute live statistics from the feeds
-  const stats = await fetchAndComputeStats(customBaseUrl);
+  const [rssStats, apifyStats] = await Promise.all([
+    fetchAndComputeStats(customBaseUrl),
+    fetchLatestApifyStats(),
+  ]);
+  const stats = [...rssStats, ...apifyStats];
 
   // 2. Try to connect to MongoDB (with diagnostic feedback)
   let mongoConnected = false;

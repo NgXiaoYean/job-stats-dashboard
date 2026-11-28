@@ -36,6 +36,8 @@ interface MissingFieldsBreakdown {
 interface JobStat {
   source: string;
   url: string;
+  sourceType?: 'rss' | 'apify';
+  finishedAt?: string;
   subLinks?: SourceSubLink[];
   totalPosts: number;
   completeFields: number;
@@ -193,7 +195,8 @@ export default function Dashboard() {
       {/* Control Bar: Refresh & Actions */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-8 flex flex-col sm:flex-row gap-3 items-center justify-between">
         <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-          <span>Monitoring 12 job platforms</span>
+          <span>Monitoring 14 job platforms</span>
+          <a href="/apify" className="text-blue-700 hover:underline">Review Apify data →</a>
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
@@ -286,16 +289,19 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                LIVE CRAWL
+                CURRENT STATUS
               </span>
               <h2 className="font-semibold text-slate-900 text-sm">Live Job Platform Status</h2>
             </div>
             <div className="text-xs text-slate-500 mt-1 space-y-0.5">
               <div>
-                <span className="font-semibold text-slate-700">Storage:</span> Real-time live check (Not stored in database).
+                <span className="font-semibold text-slate-700">Source:</span> RSS feeds are checked live; Indeed and JobStreet use their latest successful Apify run.
               </div>
               <div>
                 <span className="font-semibold text-slate-700">Core fields required:</span> Title, Post ID, Job Link, and Posted Date & Time.
+              </div>
+              <div>
+                <span className="font-semibold text-slate-700">Apify date windows:</span> 7 and 30 days before the latest run finished, within its collected results.
               </div>
             </div>
           </div>
@@ -313,8 +319,8 @@ export default function Dashboard() {
                 <th className="px-4 py-3.5" title="Has Post ID, PostedDate + Time, URL (Job), and Title">Complete Posts</th>
                 <th className="px-4 py-3.5" title="Breakdown of missing fields">Missing Fields</th>
                 <th className="px-4 py-3.5">Has Location</th>
-                <th className="px-4 py-3.5" title="Only posts that have all compulsory fields and were published within the past 7 days">&le; 7 Days (Complete)</th>
-                <th className="px-4 py-3.5" title="Only posts that have all compulsory fields and were published within the past 30 days">&le; 30 Days (Complete)</th>
+                <th className="px-4 py-3.5" title="Complete posts from the last 7 days; Apify uses the run finish time">&le; 7 Days (Complete)</th>
+                <th className="px-4 py-3.5" title="Complete posts from the last 30 days; Apify uses the run finish time">&le; 30 Days (Complete)</th>
                 <th className="px-4 py-3.5">Status</th>
               </tr>
             </thead>
@@ -324,6 +330,9 @@ export default function Dashboard() {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-slate-900">{item.source}</span>
+                      {item.sourceType === 'apify' && (
+                        <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded">Apify</span>
+                      )}
                       {item.subLinks && item.subLinks.length > 0 ? (
                         <button
                           type="button"
@@ -344,7 +353,7 @@ export default function Dashboard() {
                           target="_blank"
                           rel="noreferrer"
                           className="text-slate-400 hover:text-blue-600 transition"
-                          title="Open RSS feed"
+                          title={item.sourceType === 'apify' ? 'Open Apify actor' : 'Open RSS feed'}
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
@@ -433,7 +442,9 @@ export default function Dashboard() {
                     ) : (
                       <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-medium bg-emerald-50 px-2.5 py-1 rounded-full">
                         <CheckCircle2 className="w-3 h-3" />
-                        Active
+                        {item.sourceType === 'apify' && item.finishedAt
+                          ? `Finished ${new Date(item.finishedAt).toLocaleString()}`
+                          : 'Active'}
                       </span>
                     )}
                   </td>

@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:indexes": "node --env-file=.env scripts/create-indexes.mjs",
+    "apify:schedule": "node --env-file=.env scripts/sync-apify-schedule.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.453.0",

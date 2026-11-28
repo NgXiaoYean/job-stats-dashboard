@@ -12,6 +12,14 @@ export async function GET(request: Request) {
   }
 
   const stats = await fetchAndComputeStats();
+  const successfulStats = stats.filter((source) => !source.error);
+
+  if (successfulStats.length === 0) {
+    return NextResponse.json(
+      { success: false, error: 'All feeds failed; no snapshot was saved.' },
+      { status: 502 },
+    );
+  }
 
   try {
     const client = await clientPromise;
@@ -41,7 +49,7 @@ export async function GET(request: Request) {
         }
       }
 
-      const operations = stats.map((s) => {
+      const operations = successfulStats.map((s) => {
         const currentIds: string[] = s.postIds || [];
         const prevSet = prevMap.get(s.source);
 
@@ -76,11 +84,22 @@ export async function GET(request: Request) {
 
       await collection.bulkWrite(operations);
 
-      return NextResponse.json({ success: true, count: stats.length, date: dateString, savedToMongo: true });
+      return NextResponse.json({
+        success: true,
+        count: successfulStats.length,
+        skipped: stats.length - successfulStats.length,
+        date: dateString,
+        savedToMongo: true,
+      });
     }
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true, count: stats.length, savedToMongo: false });
+  return NextResponse.json({
+    success: true,
+    count: successfulStats.length,
+    skipped: stats.length - successfulStats.length,
+    savedToMongo: false,
+  });
 }
